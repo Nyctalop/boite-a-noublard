@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boîte à Noublard</title>
+<style>
+:root{--bg:#14121a;--card:#201d2b;--txt:#f3f0ff;--mut:#9b94b5;--acc:#ffcc33}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.3 system-ui,sans-serif;padding:0 12px 40px;-webkit-user-select:none;user-select:none}
+header{text-align:center;padding:18px 0 8px}
+h1{margin:0;font-size:1.7rem;letter-spacing:.5px}
+h1 span{color:var(--acc)}
+.panel{background:var(--card);border-radius:14px;padding:12px 14px;margin:10px auto;max-width:900px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.ctl{flex:1 1 220px;min-width:200px}
+.ctl label{display:flex;justify-content:space-between;font-size:.85rem;color:var(--mut);margin-bottom:2px}
+.ctl label b{color:var(--acc);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip,.tog,#stop{border:0;border-radius:999px;padding:7px 13px;background:#2f2b40;color:var(--txt);font:inherit;font-size:.85rem;cursor:pointer}
+.chip:active,.tog.on{background:var(--acc);color:#1a1500}
+#stop{background:#5a2330}
+h2{max-width:900px;margin:18px auto 6px;font-size:.8rem;text-transform:uppercase;letter-spacing:2px;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-width:900px;margin:0 auto}
+.pad{position:relative;border:0;border-radius:14px;min-height:78px;padding:10px 8px;color:#fff;font:inherit;font-weight:700;font-size:.95rem;cursor:pointer;background:hsl(var(--h) 55% 38%);box-shadow:0 4px 0 hsl(var(--h) 55% 24%);transition:transform .05s,box-shadow .05s,filter .1s;touch-action:manipulation}
+.pad.hit{transform:translateY(4px);box-shadow:0 0 0 hsl(var(--h) 55% 24%);filter:brightness(1.35)}
+.pad kbd{position:absolute;top:5px;right:7px;font:600 .7rem monospace;opacity:.55}
+footer{text-align:center;color:var(--mut);font-size:.75rem;margin-top:26px}
+#msg{text-align:center;color:#ff8a8a;display:none;margin:10px}
+</style>
+</head>
+<body>
+<header><h1>Boîte à <span>Noublard</span></h1></header>
+<div id="msg"></div>
+<div class="panel">
+ <div class="row">
+  <div class="ctl"><label>Vitesse <b id="vs">1.00×</b></label><input id="speed" type="range" min="0.4" max="2.5" step="0.01" value="1"></div>
+  <div class="ctl"><label>Hauteur <b id="ps">0 demi-ton</b></label><input id="pitch" type="range" min="-12" max="12" step="0.5" value="0"></div>
+ </div>
+ <div class="row" style="margin-top:10px">
+  <div class="chips" id="presets"></div>
+ </div>
+ <div class="row" style="margin-top:10px">
+  <button class="tog" id="rnd">🎲 Aléatoire</button>
+  <button class="tog" id="rev">⏪ À l'envers</button>
+  <button id="stop">⏹ Tout couper</button>
+ </div>
+</div>
+<div id="pads"></div>
+<footer>Clique (ou tape au clavier) · spamme un bouton pour relancer le son · Vitesse et Hauteur se cumulent comme un magnéto</footer>
+<script>
+const SONS=[{"id": "oh-non", "label": "Oh non, je suis encore là", "cat": "Phrases", "file": "sons/oh-non.mp3"}, {"id": "arrete", "label": "Arrête !", "cat": "Phrases", "file": "sons/arrete.mp3"}, {"id": "arrete-pas-ca", "label": "Arrête, arrête, dis-moi pas ça", "cat": "Phrases", "file": "sons/arrete-pas-ca.mp3"}, {"id": "ok-shit", "label": "Ok shit", "cat": "Phrases", "file": "sons/ok-shit.mp3"}, {"id": "profit", "label": "Profit", "cat": "Phrases", "file": "sons/profit.mp3"}, {"id": "tes-mort", "label": "T'es mort ?", "cat": "Phrases", "file": "sons/tes-mort.mp3"}, {"id": "trop-fort", "label": "Mais putain, mais trop fort", "cat": "Phrases", "file": "sons/trop-fort.mp3"}, {"id": "je-vois-rien", "label": "Je vois rien", "cat": "Phrases", "file": "sons/je-vois-rien.mp3"}, {"id": "bugue", "label": "Ça bugue toujours plus", "cat": "Phrases", "file": "sons/bugue.mp3"}, {"id": "blocus", "label": "Il fait blocus même dans le jeu", "cat": "Phrases", "file": "sons/blocus.mp3"}, {"id": "on-ne-me-cherche-pas", "label": "On ne me cherche pas", "cat": "Phrases", "file": "sons/on-ne-me-cherche-pas.mp3"}, {"id": "tout-foirer", "label": "Je vais tout foirer", "cat": "Phrases", "file": "sons/tout-foirer.mp3"}, {"id": "tout-niquer", "label": "Je vais tout niquer", "cat": "Phrases", "file": "sons/tout-niquer.mp3"}, {"id": "tes-mort-martin", "label": "T'es mort Martin", "cat": "Phrases", "file": "sons/tes-mort-martin.mp3"}, {"id": "attention-chaines", "label": "Attention les chaînes", "cat": "Phrases", "file": "sons/attention-chaines.mp3"}, {"id": "fais-pas-ca", "label": "Fais pas ça", "cat": "Phrases", "file": "sons/fais-pas-ca.mp3"}, {"id": "merci-ballons", "label": "Merci de ballons", "cat": "Phrases", "file": "sons/merci-ballons.mp3"}, {"id": "cest-mort", "label": "C'est mort", "cat": "Phrases", "file": "sons/cest-mort.mp3"}, {"id": "gros-mou", "label": "C'est qui le gros mou là ?", "cat": "Phrases", "file": "sons/gros-mou.mp3"}, {"id": "a-touche", "label": "Ça a touché !", "cat": "Phrases", "file": "sons/a-touche.mp3"}, {"id": "alex-moulard", "label": "Alex moulard", "cat": "Phrases", "file": "sons/alex-moulard.mp3"}, {"id": "tes-moulard", "label": "T'es moulard", "cat": "Phrases", "file": "sons/tes-moulard.mp3"}, {"id": "je-suis-mort", "label": "Je suis mort", "cat": "Phrases", "file": "sons/je-suis-mort.mp3"}, {"id": "je-suis-mort-2", "label": "Je suis mort (bis)", "cat": "Phrases", "file": "sons/je-suis-mort-2.mp3"}, {"id": "putain", "label": "Putain", "cat": "Jurons", "file": "sons/putain.mp3"}, {"id": "putain-2", "label": "Putain (bis)", "cat": "Jurons", "file": "sons/putain-2.mp3"}, {"id": "putain-3", "label": "Putain (ter)", "cat": "Jurons", "file": "sons/putain-3.mp3"}, {"id": "merde", "label": "Mais merde", "cat": "Jurons", "file": "sons/merde.mp3"}, {"id": "non", "label": "Non !", "cat": "Cris", "file": "sons/non.mp3"}, {"id": "oh", "label": "Oh !", "cat": "Cris", "file": "sons/oh.mp3"}, {"id": "ouh", "label": "Ouh", "cat": "Cris", "file": "sons/ouh.mp3"}, {"id": "ouais", "label": "Ouais", "cat": "Cris", "file": "sons/ouais.mp3"}, {"id": "oh-sympa", "label": "Oh, sympa", "cat": "Cris", "file": "sons/oh-sympa.mp3"}, {"id": "non-non-non", "label": "Non non non", "cat": "Cris", "file": "sons/non-non-non.mp3"}, {"id": "allez", "label": "Allez !", "cat": "Cris", "file": "sons/allez.mp3"}, {"id": "cri-1", "label": "Cri", "cat": "Cris", "file": "sons/cri-1.mp3"}, {"id": "cri-2", "label": "Qu'est-ce qu'il y a ?!", "cat": "Cris", "file": "sons/cri-2.mp3"}, {"id": "cri-3", "label": "Cri (bis)", "cat": "Cris", "file": "sons/cri-3.mp3"}, {"id": "cri-4", "label": "Allez !!", "cat": "Cris", "file": "sons/cri-4.mp3"}, {"id": "cri-5", "label": "Cri (ter)", "cat": "Cris", "file": "sons/cri-5.mp3"}, {"id": "cri-6", "label": "Allez, allez !", "cat": "Cris", "file": "sons/cri-6.mp3"}, {"id": "cri-7", "label": "Aaaah", "cat": "Cris", "file": "sons/cri-7.mp3"}, {"id": "cri-8", "label": "Cri (quater)", "cat": "Cris", "file": "sons/cri-8.mp3"}];
+const KEYS="azertyuiopqsdfghjklmwxcvbn1234567890";
+const HUES={"Phrases":265,"Jurons":0,"Cris":35};
+const ctx=new (window.AudioContext||window.webkitAudioContext)();
+const master=ctx.createGain();master.gain.value=0.9;
+const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);
+const buffers={},bwd={},playing={};
+let speed=1,pitch=0,rnd=false,rev=false;
+const $=id=>document.getElementById(id);
+
+function reversed(b){const r=ctx.createBuffer(b.numberOfChannels,b.length,b.sampleRate);
+ for(let c=0;c<b.numberOfChannels;c++){const s=b.getChannelData(c),d=r.getChannelData(c);for(let i=0;i<s.length;i++)d[i]=s[s.length-1-i]}return r}
+
+async function load(){
+ try{
+  await Promise.all(SONS.map(async s=>{
+   const r=await fetch(s.file);if(!r.ok)throw new Error(s.file);
+   buffers[s.id]=await ctx.decodeAudioData(await r.arrayBuffer());
+  }));
+ }catch(e){const m=$("msg");m.style.display="block";m.textContent="Impossible de charger les sons (ouvre la page via un serveur / GitHub Pages, pas en file://).";}
+}
+
+function play(id,el){
+ if(ctx.state!=="running")ctx.resume();
+ let b=buffers[id];if(!b)return;
+ if(rev){bwd[id]=bwd[id]||reversed(b);b=bwd[id]}
+ if(playing[id]){try{playing[id].stop()}catch(e){}}
+ const src=ctx.createBufferSource();src.buffer=b;
+ let semis=pitch;if(rnd)semis+=(Math.random()*20-10);
+ const sp=rnd?speed*(0.85+Math.random()*0.3):speed;
+ src.playbackRate.value=sp;src.detune.value=semis*100;
+ src.connect(master);
+ src.onended=()=>{if(playing[id]===src)delete playing[id]};
+ playing[id]=src;src.start();
+ if(el){el.classList.add("hit");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("hit"),90)}
+}
+function stopAll(){for(const k in playing){try{playing[k].stop()}catch(e){}}}
+
+const cats=[...new Set(SONS.map(s=>s.cat))];const padEl={};
+for(const c of cats){
+ const h=document.createElement("h2");h.textContent=c;$("pads").appendChild(h);
+ const g=document.createElement("div");g.className="grid";$("pads").appendChild(g);
+ SONS.filter(s=>s.cat===c).forEach((s,i)=>{
+  const b=document.createElement("button");b.className="pad";b.style.setProperty("--h",(HUES[c]+i*7)%360);
+  b.textContent=s.label;
+  const k=KEYS[SONS.indexOf(s)];if(k){const kb=document.createElement("kbd");kb.textContent=k.toUpperCase();b.appendChild(kb);padEl[k]=[s.id,b]}
+  b.addEventListener("pointerdown",e=>{e.preventDefault();play(s.id,b)});
+  g.appendChild(b);
+ });
+}
+addEventListener("keydown",e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;const p=padEl[e.key.toLowerCase()];if(p)play(p[0],p[1])});
+
+function upd(){$("vs").textContent=speed.toFixed(2)+"×";$("ps").textContent=(pitch>0?"+":"")+pitch+" demi-ton"+(Math.abs(pitch)>1?"s":"")}
+$("speed").oninput=e=>{speed=+e.target.value;upd()};
+$("pitch").oninput=e=>{pitch=+e.target.value;upd()};
+const PRE=[["Normal",1,0],["Démon 😈",0.8,-7],["Géant",0.6,-12],["Chipmunk 🐿️",1.3,9],["Robot en panne",0.5,-3],["Speed ⚡",2,0]];
+for(const [n,s,p] of PRE){const b=document.createElement("button");b.className="chip";b.textContent=n;
+ b.onclick=()=>{speed=s;pitch=p;$("speed").value=s;$("pitch").value=p;upd()};$("presets").appendChild(b)}
+$("rnd").onclick=e=>{rnd=!rnd;e.currentTarget.classList.toggle("on",rnd)};
+$("rev").onclick=e=>{rev=!rev;e.currentTarget.classList.toggle("on",rev)};
+$("stop").onclick=stopAll;
+addEventListener("pointerdown",()=>{if(ctx.state!=="running")ctx.resume()});
+upd();load();
+</script>
+</body>
+</html>
